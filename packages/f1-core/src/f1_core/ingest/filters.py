@@ -28,12 +28,16 @@ from f1_core.config import IngestConfig
 
 
 def mask_traffic(laps: pd.DataFrame, config: IngestConfig) -> pd.Series[bool]:
-    """Drop laps run within ``traffic_gap_s`` of the car ahead (dirty air / racing)."""
-    d = laps[["Driver", "LapNumber", "Position", "Time"]].copy()
-    d = d.sort_values(["LapNumber", "Position"])
-    d["gap_end"] = d["Time"] - d.groupby("LapNumber")["Time"].shift(1)
-    d = d.sort_values(["Driver", "LapNumber"])
-    d["gap_start"] = d.groupby("Driver")["gap_end"].shift(1)
+    """Drop laps run within ``traffic_gap_s`` of the car ahead (dirty air / racing).
+
+    All grouping is scoped by (Season, Event): the frame may hold many races.
+    """
+    race = ["Season", "Event"]
+    d = laps[[*race, "Driver", "LapNumber", "Position", "Time"]].copy()
+    d = d.sort_values([*race, "LapNumber", "Position"])
+    d["gap_end"] = d["Time"] - d.groupby([*race, "LapNumber"])["Time"].shift(1)
+    d = d.sort_values([*race, "Driver", "LapNumber"])
+    d["gap_start"] = d.groupby([*race, "Driver"])["gap_end"].shift(1)
     close = (d["gap_end"] < config.traffic_gap_s) | (d["gap_start"] < config.traffic_gap_s)
     return close.reindex(laps.index).fillna(False)
 
@@ -66,10 +70,16 @@ def mask_inaccurate(laps: pd.DataFrame, config: IngestConfig) -> pd.Series[bool]
 
 
 def mask_wet(laps: pd.DataFrame, config: IngestConfig) -> pd.Series[bool]:
-    """Drop wet running: INTERMEDIATE/WET compound, or the whole session marked wet."""
+    """Drop wet running: INTERMEDIATE/WET compound, or the whole session marked wet.
+
+    A session counts as wet when the share of weather samples reporting rainfall
+    exceeds ``wet_rainfall_fraction`` — a single sensor blip must not erase a dry
+    race. (``RainfallFraction`` is attached per session by the ETL; absent in
+    older frames, compound is the only signal.)
+    """
     wet = ~laps["Compound"].isin(config.dry_compounds)
-    if "SessionWet" in laps.columns:
-        wet |= laps["SessionWet"].astype("boolean").fillna(False).astype(bool)
+    if "RainfallFraction" in laps.columns:
+        wet |= laps["RainfallFraction"].fillna(0.0) > config.wet_rainfall_fraction
     return wet
 
 

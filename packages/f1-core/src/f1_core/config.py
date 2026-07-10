@@ -19,6 +19,10 @@ class IngestConfig(BaseModel):
         default=1.5, description="Drop a lap if the gap to the car ahead is below this (s)."
     )
     dry_compounds: list[str] = Field(default=["SOFT", "MEDIUM", "HARD"])
+    wet_rainfall_fraction: float = Field(
+        default=0.1,
+        description="Mark a session wet if more than this share of weather samples report rain.",
+    )
 
 
 class F1CoreConfig(BaseModel):

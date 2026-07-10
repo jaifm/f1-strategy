@@ -60,6 +60,15 @@ class TestTrafficRule:
         laps = make_laps(Time=[200.0, 210.0])
         assert mask_traffic(laps, CONFIG).tolist() == [False, False]
 
+    def test_gaps_never_computed_across_races(self) -> None:
+        # Regression: with two races concatenated, cars on the same lap number of
+        # DIFFERENT events must not be compared. Both races are clear-air here,
+        # but naive lap-number grouping would see a 1.0 s cross-race "gap".
+        race_a = make_laps(Time=[200.0, 210.0])
+        race_b = make_laps(Event=["Otherton", "Otherton"], Time=[201.0, 220.0])
+        laps = pd.concat([race_a, race_b], ignore_index=True)
+        assert mask_traffic(laps, CONFIG).tolist() == [False, False, False, False]
+
     def test_close_gap_at_lap_start_drops_next_lap(self) -> None:
         # Lap 2: B is 1.0 s behind. Lap 3: B falls to 8 s behind, but started close.
         laps = pd.concat(
@@ -101,8 +110,13 @@ class TestSimpleRules:
 
     def test_wet_session_drops_everything(self) -> None:
         laps = make_laps()
-        laps["SessionWet"] = True
+        laps["RainfallFraction"] = 0.5
         assert mask_wet(laps, CONFIG).tolist() == [True, True]
+
+    def test_rainfall_blip_does_not_mark_session_wet(self) -> None:
+        laps = make_laps()
+        laps["RainfallFraction"] = 0.01  # single sensor blip in a dry race
+        assert mask_wet(laps, CONFIG).tolist() == [False, False]
 
 
 class TestApplyFiltersOnFixture:

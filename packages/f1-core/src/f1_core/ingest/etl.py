@@ -60,8 +60,9 @@ def session_to_laps(session: fastf1.core.Session, season: int, event: str) -> pd
         on="Time",
         direction="nearest",
     )
-    # Spec rule 6: a session with any recorded rainfall is marked wet in full.
-    laps["SessionWet"] = bool(weather["Rainfall"].any())
+    # Spec rule 6 input: share of weather samples reporting rain; the wet filter
+    # thresholds this (config) so a sensor blip cannot mark a dry race wet.
+    laps["RainfallFraction"] = float(weather["Rainfall"].astype(bool).mean())
     return laps
 
 

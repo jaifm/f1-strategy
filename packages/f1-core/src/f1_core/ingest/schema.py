@@ -16,7 +16,9 @@ LAP_SCHEMA = pa.DataFrameSchema(
         "event": pa.Column(str),
         "season": pa.Column(int),
         "lap_number": pa.Column(int, pa.Check.ge(1)),
-        "lap_time_s": pa.Column(float, pa.Check.in_range(30.0, 600.0), nullable=True),
+        # Raw laps can carry red-flag stoppages (1000s of seconds); plausibility
+        # is enforced on clean laps only via the dataframe-level check below.
+        "lap_time_s": pa.Column(float, pa.Check.gt(0), nullable=True),
         "compound": pa.Column(str, nullable=True),
         "tyre_age": pa.Column(float, pa.Check.ge(0), nullable=True),
         "stint_number": pa.Column(float, pa.Check.ge(1), nullable=True),
@@ -27,6 +29,11 @@ LAP_SCHEMA = pa.DataFrameSchema(
         "position": pa.Column(float, pa.Check.in_range(1, 24), nullable=True),
         "is_clean": pa.Column(bool),
     },
+    checks=pa.Check(
+        lambda df: ~df["is_clean"] | df["lap_time_s"].between(30.0, 600.0),
+        name="clean_lap_time_plausible",
+        error="clean laps must have a lap time in [30, 600] s",
+    ),
     strict=True,
     coerce=True,
 )

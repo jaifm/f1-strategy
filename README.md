@@ -18,6 +18,20 @@ uv run ruff format .    # format
 uv run mypy             # type-check f1-core (strict)
 ```
 
+### Troubleshooting: `ModuleNotFoundError` for workspace packages (macOS)
+
+uv marks the `.venv` directory hidden for Finder; when the repo lives in an
+iCloud-synced folder (e.g. `~/Documents`), the sync agent asynchronously propagates
+that flag to files inside — including the editable-install `.pth` files, which
+Python ≥ 3.12 then **silently skips**, breaking workspace imports. Fix (repeat if the
+venv is ever recreated):
+
+```bash
+chflags -R nohidden .venv
+```
+
+Clearing the flag on the directory itself is what stops it from coming back.
+
 ## Repository layout
 
 ```
