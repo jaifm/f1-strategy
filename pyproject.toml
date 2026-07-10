@@ -1,0 +1,61 @@
+[project]
+name = "f1-strategy"
+version = "0.1.0"
+description = "F1 probabilistic strategy system: quantile GBM + Monte Carlo DSS, CNN-LSTM degradation lab, and live pit-wall integration."
+requires-python = ">=3.11"
+dependencies = [
+    "f1-core",
+    "f1-vision",
+    "f1-pitwall",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+f1-core = { workspace = true }
+f1-vision = { workspace = true }
+f1-pitwall = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "pandas-stubs>=2.2",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["packages/f1-core/src", "packages/f1-vision/src", "packages/f1-pitwall/src"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "C4",  # flake8-comprehensions
+    "NPY", # numpy rules
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.mypy]
+python_version = "3.11"
+packages = ["f1_core"]
+strict = true
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source_pkgs = ["f1_core", "f1_vision", "f1_pitwall"]

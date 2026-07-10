@@ -1,0 +1,23 @@
+[project]
+name = "f1-vision"
+version = "0.1.0"
+description = "CNN-LSTM research lab: telemetry physics proxies, Tab2Img energy frames, degradation detection."
+requires-python = ">=3.11"
+dependencies = [
+    "f1-core",
+    "torch>=2.3",
+    "captum>=0.7",
+    "scipy>=1.13",
+    "numpy>=1.26",
+    "pandas>=2.2",
+]
+
+[tool.uv.sources]
+f1-core = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/f1_vision"]
