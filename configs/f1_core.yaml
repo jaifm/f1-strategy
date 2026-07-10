@@ -1,0 +1,8 @@
+# f1-core configuration. Every tunable lives here, not in code (see PROJECT_SPEC.md §0).
+ingest:
+  seasons: [2024]
+  session: R
+  cache_dir: data/fastf1_cache
+  output_dir: data/processed
+  traffic_gap_s: 1.5
+  dry_compounds: [SOFT, MEDIUM, HARD]
