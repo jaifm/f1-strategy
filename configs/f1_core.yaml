@@ -6,3 +6,26 @@ ingest:
   output_dir: data/processed
   traffic_gap_s: 1.5
   dry_compounds: [SOFT, MEDIUM, HARD]
+  wet_rainfall_fraction: 0.1
+
+# Tuned on 2024 (see artifacts/phase1): shallow regularized trees keep quantile
+# crossing < 2%; deeper trees (num_leaves 31, min_child 40) hit ~27% crossing.
+model:
+  quantiles: [0.05, 0.5, 0.95]
+  n_estimators: 150
+  learning_rate: 0.05
+  num_leaves: 7
+  min_child_samples: 200
+  seed: 7
+
+evaluation:
+  mode: leave_one_event_out
+  calibration_fraction: 0.2
+  test_fraction: 0.2
+  split_seed: 11
+  target_coverage: 0.9
+  coverage_tolerance: 0.02
+  # Required for cross-track transfer: raw global model achieves 16% raw coverage
+  # because held-out events are unseen categories (spec §1.3 fallback, adopted).
+  per_event_normalization: true
+  artifacts_dir: artifacts/phase1

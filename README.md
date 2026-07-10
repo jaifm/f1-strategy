@@ -10,6 +10,14 @@ A monorepo containing three linked projects (see [PROJECT_SPEC.md](PROJECT_SPEC.
 
 Requires [uv](https://docs.astral.sh/uv/) (Python 3.12 is provisioned automatically). On macOS, LightGBM also needs OpenMP: `brew install libomp`.
 
+> **Important (macOS/iCloud):** this repo lives in an iCloud-synced folder, and a
+> project-local `.venv` breaks intermittently there (see Troubleshooting). Keep the
+> venv outside the synced tree — add this to your `~/.zshrc`:
+>
+> ```bash
+> export UV_PROJECT_ENVIRONMENT="$HOME/.venvs/f1-strategy"
+> ```
+
 ```bash
 uv sync                 # install workspace + dev tools
 uv run pytest           # run tests
@@ -23,14 +31,12 @@ uv run mypy             # type-check f1-core (strict)
 uv marks the `.venv` directory hidden for Finder; when the repo lives in an
 iCloud-synced folder (e.g. `~/Documents`), the sync agent asynchronously propagates
 that flag to files inside — including the editable-install `.pth` files, which
-Python ≥ 3.12 then **silently skips**, breaking workspace imports. Fix (repeat if the
-venv is ever recreated):
+Python ≥ 3.12 then **silently skips**, breaking workspace imports. Every `uv sync`
+re-marks the directory, so the breakage recurs.
 
-```bash
-chflags -R nohidden .venv
-```
-
-Clearing the flag on the directory itself is what stops it from coming back.
+Permanent fix: relocate the venv outside the synced tree with
+`UV_PROJECT_ENVIRONMENT` (see Quickstart). Stopgap if you must use a local `.venv`:
+`chflags -R nohidden .venv` after every sync.
 
 ## Repository layout
 

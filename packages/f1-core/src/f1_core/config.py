@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field
@@ -25,10 +26,52 @@ class IngestConfig(BaseModel):
     )
 
 
+class ModelConfig(BaseModel):
+    """Hyperparameters for the quantile LightGBM model (and MSE baseline).
+
+    Defaults were tuned on 2024 data: shallow, heavily regularized trees keep the
+    quantile-crossing rate within the spec's 2% threshold (deep trees hit ~27%).
+    """
+
+    quantiles: list[float] = Field(default=[0.05, 0.5, 0.95])
+    n_estimators: int = Field(default=150)
+    learning_rate: float = Field(default=0.05)
+    num_leaves: int = Field(default=7)
+    min_child_samples: int = Field(default=200)
+    seed: int = Field(default=7)
+
+
+class EvaluationConfig(BaseModel):
+    """Settings for the calibration study (spec §1.3 deliverable)."""
+
+    mode: Literal["single_split", "leave_one_event_out"] = Field(
+        default="leave_one_event_out",
+        description=(
+            "leave_one_event_out rotates every event through the test slot and pools "
+            "coverage — single-split coverage on one season swings ±10% with the seed."
+        ),
+    )
+    calibration_fraction: float = Field(default=0.2)
+    test_fraction: float = Field(default=0.2)
+    split_seed: int = Field(default=11)
+    target_coverage: float = Field(default=0.9)
+    coverage_tolerance: float = Field(default=0.02, description="Acceptance band: 90% ± 2%.")
+    per_event_normalization: bool = Field(
+        default=False,
+        description=(
+            "Model lap-time delta to the event's fastest clean lap instead of raw "
+            "lap time (spec §1.3 fallback for poor cross-track generalization)."
+        ),
+    )
+    artifacts_dir: Path = Field(default=Path("artifacts/phase1"))
+
+
 class F1CoreConfig(BaseModel):
     """Root config for the f1-core package."""
 
     ingest: IngestConfig = Field(default_factory=IngestConfig)
+    model: ModelConfig = Field(default_factory=ModelConfig)
+    evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
 
 
 def load_config(path: Path | str | None = None) -> F1CoreConfig:
