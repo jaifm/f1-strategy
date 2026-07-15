@@ -29,3 +29,12 @@ evaluation:
   # because held-out events are unseen categories (spec §1.3 fallback, adopted).
   per_event_normalization: true
   artifacts_dir: artifacts/phase1
+
+simulation:
+  n_sims: 2000
+  rho_day: 0.65    # calibrated vs 2024 stint-residual variance (validate.py)
+  rho_stint: 0.0   # inseparable from day factor on one season of data
+  pit_loss_mean_s: 22.0   # generic; per-track table when SC/traffic land
+  pit_loss_std_s: 1.5
+  sc_rate_per_lap: 0.0    # safety car is v2
+  seed: 7

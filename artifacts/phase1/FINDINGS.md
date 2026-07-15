@@ -49,6 +49,27 @@ Consequences:
 - Extending ingest to 2022–2023 (higher-degradation seasons) should strengthen
   tail estimation and is the cheapest next experiment.
 
+## Phase 1.4 — Monte Carlo spread validation (`mc_spread_validation.json`)
+
+Stint-level check on held-out events (model + CQR trained without the event,
+engine simulates each real stint, actual clean-lap total vs simulated [p5, p95]):
+
+| Event | raw coverage | de-biased | event bias | spread ratio |
+|---|---|---|---|---|
+| Bahrain | 50% | **95%** | +0.88 s/lap | 0.83 |
+| Japan | 72% | **79%** | +0.31 s/lap | 1.17 |
+| Hungary | 77% | **100%** | +0.63 s/lap | 0.71 |
+| Miami | 15% | **100%** | −1.30 s/lap | 1.07 |
+
+- **Spread validated**: ratios ≈ 1, de-biased coverage ≈ 90% → the correlated-noise
+  decomposition (calibrated `rho_day ≈ 0.67`, now the config default) reproduces
+  historical stint-time spread. Raw quantiles alone collapse it (17% coverage) —
+  the engine must always simulate from CQR-widened intervals.
+- **Known limitation**: a per-event bias of ±0.3–1.3 s/lap from the static
+  fastest-lap benchmark shifts whole events. Live re-anchoring on early-race pace
+  (the Phase 3 fusion layer) is the fix; until then absolute race times carry this
+  offset while strategy *comparisons* (same event, same bias) are unaffected.
+
 ## Artifacts
 
 - `metrics.json` — pooled LOO metrics (this study).

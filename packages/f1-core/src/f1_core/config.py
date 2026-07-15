@@ -66,12 +66,31 @@ class EvaluationConfig(BaseModel):
     artifacts_dir: Path = Field(default=Path("artifacts/phase1"))
 
 
+class SimulationConfig(BaseModel):
+    """Monte Carlo engine settings (spec §1.4)."""
+
+    n_sims: int = Field(default=2000)
+    rho_day: float = Field(
+        default=0.65,
+        description="Variance share: driver-day factor. Calibrated on 2024 (validate.py).",
+    )
+    rho_stint: float = Field(
+        default=0.0,
+        description="Variance share: tire-set factor. Inseparable from day on one season.",
+    )
+    pit_loss_mean_s: float = Field(default=22.0)
+    pit_loss_std_s: float = Field(default=1.5)
+    sc_rate_per_lap: float = Field(default=0.0, description="Safety car: v2, must stay 0.")
+    seed: int = Field(default=7)
+
+
 class F1CoreConfig(BaseModel):
     """Root config for the f1-core package."""
 
     ingest: IngestConfig = Field(default_factory=IngestConfig)
     model: ModelConfig = Field(default_factory=ModelConfig)
     evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
+    simulation: SimulationConfig = Field(default_factory=SimulationConfig)
 
 
 def load_config(path: Path | str | None = None) -> F1CoreConfig:
