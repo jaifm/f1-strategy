@@ -59,3 +59,4 @@ ignore_missing_imports = true
 
 [tool.coverage.run]
 source_pkgs = ["f1_core", "f1_vision", "f1_pitwall"]
+omit = ["*/__main__.py"]  # argparse shims over tested functions

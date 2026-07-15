@@ -35,6 +35,7 @@ def make_synthetic(n_events: int = 8, race_laps: int = 50, seed: int = 42) -> pd
                         "track_temp": 35.0 + e,
                         "air_temp": 25.0 + e,
                         "stint_lap": tyre_age,
+                        "stint_number": float(stint),
                         "is_clean": True,
                         "lap_time_s": 90.0
                         + 0.05 * e
