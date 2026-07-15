@@ -24,6 +24,14 @@ uv run pytest           # run tests
 uv run ruff check .     # lint
 uv run ruff format .    # format
 uv run mypy             # type-check f1-core (strict)
+
+# pipeline
+uv run python -m f1_core.ingest     # ETL (seasons in configs/f1_core.yaml)
+uv run python -m f1_core.evaluate   # calibration study -> artifacts/phase1
+uv run python -m f1_core.simulate   # MC spread validation vs a held-out race
+
+# dashboard
+uv run streamlit run packages/f1-pitwall/src/f1_pitwall/dashboard/pitwall.py
 ```
 
 ### Troubleshooting: `ModuleNotFoundError` for workspace packages (macOS)

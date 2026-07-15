@@ -1,0 +1,20 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pitwall",
+      "runtimeExecutable": "/Users/jaidonfroggatt-morton/.venvs/f1-strategy/bin/python",
+      "runtimeArgs": [
+        "-m",
+        "streamlit",
+        "run",
+        "packages/f1-pitwall/src/f1_pitwall/dashboard/pitwall.py",
+        "--server.headless",
+        "true",
+        "--server.port",
+        "8501"
+      ],
+      "port": 8501
+    }
+  ]
+}
