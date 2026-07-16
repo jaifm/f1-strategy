@@ -22,8 +22,16 @@ class ProxyConfig(BaseModel):
     )
 
 
+class ImagingConfig(BaseModel):
+    """Tab2Img settings (spec §2.4)."""
+
+    k_sectors: int = Field(default=20, description="Equal-distance mini-sectors per lap.")
+    window_laps: int = Field(default=5, description="L: laps of frames per training sample.")
+
+
 class F1VisionConfig(BaseModel):
     proxies: ProxyConfig = Field(default_factory=ProxyConfig)
+    imaging: ImagingConfig = Field(default_factory=ImagingConfig)
 
 
 def load_config(path: Path | str | None = None) -> F1VisionConfig:
