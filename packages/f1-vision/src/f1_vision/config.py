@@ -29,9 +29,21 @@ class ImagingConfig(BaseModel):
     window_laps: int = Field(default=5, description="L: laps of frames per training sample.")
 
 
+class LabelConfig(BaseModel):
+    """Prediction targets (spec §2.2)."""
+
+    baseline_laps: int = Field(
+        default=3, description="Fresh-tire clean laps defining stint baseline."
+    )
+    next_laps: int = Field(default=3, description="Horizon for pace_delta_next3.")
+    cliff_horizon: int = Field(default=5, description="Lookahead laps for cliff_within_5.")
+    cliff_threshold_s: float = Field(default=1.5, description="Pace delta defining a cliff.")
+
+
 class F1VisionConfig(BaseModel):
     proxies: ProxyConfig = Field(default_factory=ProxyConfig)
     imaging: ImagingConfig = Field(default_factory=ImagingConfig)
+    labels: LabelConfig = Field(default_factory=LabelConfig)
 
 
 def load_config(path: Path | str | None = None) -> F1VisionConfig:
