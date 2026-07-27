@@ -16,11 +16,24 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="configs/f1_core.yaml")
     parser.add_argument("--event", default=None, help="One event; default: all with clean laps.")
+    parser.add_argument(
+        "--study", action="store_true", help="Run the §2.5 baseline study on cached sectors."
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     core = load_core_config(args.config)
     vision = load_config()
+
+    if args.study:
+        from pathlib import Path
+
+        from f1_vision.train.study import run_study
+
+        report = run_study(core, vision, Path("artifacts/phase2"))
+        print(report[report.event == "ALL"].to_string(index=False))
+        return
+
     laps = pd.read_parquet(core.ingest.output_dir / "laps.parquet")
 
     clean_events = laps[laps["is_clean"]].groupby("event").size()

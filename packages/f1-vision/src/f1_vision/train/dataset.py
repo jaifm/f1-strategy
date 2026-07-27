@@ -36,7 +36,7 @@ from f1_vision.train.labels import add_labels
 
 logger = logging.getLogger(__name__)
 
-META_COLUMNS = ["season", "event", "driver", "lap_number", "stint_number"]
+META_COLUMNS = ["season", "event", "driver", "lap_number", "stint_number", "pace_delta_current"]
 
 
 def sectors_path(output_dir: Path, event: str) -> Path:
@@ -137,7 +137,10 @@ def build_samples(
             samples.append(np.stack([by_lap[lap] for lap in window]))
             pace.append(float(label_row["pace_delta_next3"]))
             cliff.append(float(label_row["cliff_within_5"]))
-            meta_rows.append((season, event, driver, anchor, stint))
+            current = float(label_row["pace_delta_current"])
+            meta_rows.append(
+                (season, event, driver, anchor, stint, 0.0 if pd.isna(current) else current)
+            )
 
     if not samples:
         raise RuntimeError("No samples produced — check sector tables and labels")

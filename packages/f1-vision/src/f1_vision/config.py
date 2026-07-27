@@ -40,10 +40,32 @@ class LabelConfig(BaseModel):
     cliff_threshold_s: float = Field(default=1.5, description="Pace delta defining a cliff.")
 
 
+class TrainConfig(BaseModel):
+    """Training/study settings (spec §2.5)."""
+
+    val_fraction: float = Field(default=0.15, description="Events held out for early stopping.")
+    test_fraction: float = Field(default=0.2, description="Events held out for the report.")
+    split_seed: int = Field(default=11)
+    epochs: int = Field(default=60)
+    batch_size: int = Field(default=256)
+    lr: float = Field(default=1e-3)
+    weight_decay: float = Field(default=1e-4)
+    lambda_cliff: float = Field(default=0.5, description="λ in L = Huber + λ·BCE.")
+    patience: int = Field(default=8, description="Early-stopping epochs without val improvement.")
+    hidden: int = Field(default=128)
+    embed_dim: int = Field(default=64)
+    seed: int = Field(default=7)
+    device: str = Field(
+        default="cpu",
+        description="Training device. MPS hangs on nn.LSTM (observed 2026-07); CPU is fast enough.",
+    )
+
+
 class F1VisionConfig(BaseModel):
     proxies: ProxyConfig = Field(default_factory=ProxyConfig)
     imaging: ImagingConfig = Field(default_factory=ImagingConfig)
     labels: LabelConfig = Field(default_factory=LabelConfig)
+    train: TrainConfig = Field(default_factory=TrainConfig)
 
 
 def load_config(path: Path | str | None = None) -> F1VisionConfig:

@@ -22,6 +22,9 @@ import pandas as pd
 from f1_vision.config import LabelConfig
 
 LABEL_COLUMNS = ["pace_delta_next3", "cliff_within_5"]
+#: Not a label: the most recent clean-lap delta at/before this lap. Feature-safe
+#: (backward-looking); it exists for the persistence baseline (spec §2.5).
+CURRENT_DELTA = "pace_delta_current"
 
 
 def add_labels(laps: pd.DataFrame, config: LabelConfig) -> pd.DataFrame:
@@ -34,6 +37,7 @@ def add_labels(laps: pd.DataFrame, config: LabelConfig) -> pd.DataFrame:
     laps = laps.sort_values(["season", "event", "driver", "lap_number"]).copy()
     laps["pace_delta_next3"] = float("nan")
     laps["cliff_within_5"] = float("nan")
+    laps[CURRENT_DELTA] = float("nan")
 
     race_end = laps.groupby(["season", "event"])["lap_number"].transform("max")
     laps["_race_end"] = race_end
@@ -65,6 +69,11 @@ def add_labels(laps: pd.DataFrame, config: LabelConfig) -> pd.DataFrame:
         ends_in_pit = end_lap < int(stint_laps["_race_end"].iloc[0])
         med = median_stop.get((season, event, stint_laps["compound"].iloc[0]))
         early_pit = ends_in_pit and med is not None and end_lap < med
+
+        # Backward-looking current delta (persistence baseline input).
+        stint_lap_numbers = stint_laps["lap_number"].to_numpy()
+        current = delta_by_lap.reindex(stint_lap_numbers).ffill()
+        laps.loc[stint_laps.index, CURRENT_DELTA] = current.to_numpy()
 
         for idx, lap_n in stint_laps["lap_number"].items():
             pace_window = delta_by_lap[
