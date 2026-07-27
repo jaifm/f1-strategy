@@ -36,13 +36,21 @@ def main(argv: list[str] | None = None) -> None:
 
     laps = pd.read_parquet(core.ingest.output_dir / "laps.parquet")
 
-    clean_events = laps[laps["is_clean"]].groupby("event").size()
-    events = [args.event] if args.event else clean_events[clean_events > 0].index.tolist()
-    for event in events:
-        season = int(laps.loc[laps["event"] == event, "season"].iloc[0])
-        sectors = build_event_sectors(laps, season, event, core.ingest, vision)
+    pairs = (
+        laps.loc[laps["is_clean"], ["season", "event"]]
+        .drop_duplicates()
+        .sort_values(["season", "event"])
+    )
+    if args.event:
+        pairs = pairs[pairs["event"] == args.event]
+    for season, event in pairs.itertuples(index=False):
+        try:
+            sectors = build_event_sectors(laps, int(season), event, core.ingest, vision)
+        except Exception as exc:  # noqa: BLE001 — one bad event must not kill the batch
+            print(f"{season} {event}: FAILED ({exc})")
+            continue
         n_laps = len(sectors[["driver", "lap_number"]].drop_duplicates())
-        print(f"{event}: {n_laps} laps sectorized")
+        print(f"{season} {event}: {n_laps} laps sectorized")
 
 
 if __name__ == "__main__":

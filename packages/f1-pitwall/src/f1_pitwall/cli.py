@@ -20,14 +20,22 @@ import pandas as pd
 DASHBOARD = Path(__file__).parent / "dashboard" / "live.py"
 
 
-def resolve_event(laps: pd.DataFrame, race: str) -> str:
-    """Match "Bahrain 2024" / "bahrain" / full name against known events."""
+def resolve_event(laps: pd.DataFrame, race: str) -> tuple[str, int]:
+    """Match "Bahrain 2024" / "bahrain" against known (event, season) pairs.
+
+    Without a year token, the most recent season of the matched event is used.
+    """
+    year_match = re.search(r"\b(19|20)\d{2}\b", race)
     token = re.sub(r"\b(19|20)\d{2}\b", "", race).strip().lower()
     events = sorted(laps["event"].unique())
     matches = [e for e in events if token in e.lower()]
     if len(matches) != 1:
         raise SystemExit(f"Race {race!r} matched {matches or 'nothing'}; known: {events}")
-    return matches[0]
+    seasons = sorted(laps.loc[laps["event"] == matches[0], "season"].unique())
+    season = int(year_match.group()) if year_match else int(seasons[-1])
+    if season not in seasons:
+        raise SystemExit(f"{matches[0]} has no {season} data; seasons: {seasons}")
+    return matches[0], season
 
 
 def run_headless(args: argparse.Namespace) -> None:
@@ -45,18 +53,18 @@ def run_headless(args: argparse.Namespace) -> None:
 
     config = load_config(args.config)
     laps = pd.read_parquet(config.ingest.output_dir / "laps.parquet")
-    event = resolve_event(laps, args.race)
+    event, season = resolve_event(laps, args.race)
     clean = add_event_benchmark(
         laps[laps["is_clean"] & laps[TARGET].notna()].reset_index(drop=True)
     )
 
     model, calibrator = train_strategy_model(clean, config)
-    ctx = build_race_context(clean, event, args.driver)
+    ctx = build_race_context(clean, event, season, args.driver)
     orchestrator = PitwallOrchestrator(
         model, calibrator, ctx, config, fusion_enabled=not args.no_fusion
     )
 
-    event_laps = laps[laps["event"] == event]
+    event_laps = laps[(laps["event"] == event) & (laps["season"] == season)]
     speed = None if args.speed <= 0 else args.speed
     updates, session_end = [], 0.0
     wall_start = time.monotonic()
@@ -73,7 +81,7 @@ def run_headless(args: argparse.Namespace) -> None:
 
     lat = np.array([u.compute_s for u in updates])
     drift = wall - session_end / speed if speed else float("nan")
-    print(f"event: {event}  driver: {args.driver}  fusion: {not args.no_fusion}")
+    print(f"event: {event} {season}  driver: {args.driver}  fusion: {not args.no_fusion}")
     print(f"laps replayed: {event_laps['lap_number'].nunique()}  updates: {len(updates)}")
     print(
         f"latency mean {lat.mean():.3f}s  p95 {np.percentile(lat, 95):.3f}s  max {lat.max():.3f}s"

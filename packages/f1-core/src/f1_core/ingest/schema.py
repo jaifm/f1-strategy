@@ -15,6 +15,7 @@ LAP_SCHEMA = pa.DataFrameSchema(
         "team": pa.Column(str),
         "event": pa.Column(str),
         "season": pa.Column(int),
+        "round": pa.Column(int, pa.Check.ge(0)),
         "lap_number": pa.Column(int, pa.Check.ge(1)),
         # Raw laps can carry red-flag stoppages (1000s of seconds); plausibility
         # is enforced on clean laps only via the dataframe-level check below.

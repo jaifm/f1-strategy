@@ -40,17 +40,18 @@ CONFIG = load_config(ARGS.config)
 
 
 @st.cache_data
-def load_data(race: str) -> tuple[pd.DataFrame, pd.DataFrame, str, pd.DataFrame | None]:
+def load_data(race: str) -> tuple[pd.DataFrame, pd.DataFrame, str, int, pd.DataFrame | None]:
     laps = pd.read_parquet(CONFIG.ingest.output_dir / "laps.parquet")
-    event = resolve_event(laps, race)
+    event, season = resolve_event(laps, race)
     clean = add_event_benchmark(
         laps[laps["is_clean"] & laps[TARGET].notna()].reset_index(drop=True)
     )
     from f1_vision.train.dataset import sectors_path  # no torch in that module
 
-    path = sectors_path(CONFIG.ingest.output_dir, event)
+    path = sectors_path(CONFIG.ingest.output_dir, season, event)
     sectors = pd.read_parquet(path) if path.exists() else None
-    return laps[laps["event"] == event], clean, event, sectors
+    race_laps = laps[(laps["event"] == event) & (laps["season"] == season)]
+    return race_laps, clean, event, season, sectors
 
 
 @st.cache_resource
@@ -79,7 +80,7 @@ def frame_figure(sectors: pd.DataFrame) -> go.Figure:
 
 def main() -> None:
     st.set_page_config(page_title="Pit Wall Live", layout="wide")
-    event_laps, clean, event, sectors = load_data(ARGS.race)
+    event_laps, clean, event, season, sectors = load_data(ARGS.race)
     drivers = sorted(event_laps["driver"].unique())
     focal = st.sidebar.selectbox(
         "Focal driver", drivers, index=drivers.index(ARGS.driver) if ARGS.driver in drivers else 0
@@ -91,7 +92,7 @@ def main() -> None:
     key = f"{event}-{focal}-{fusion_on}"
     if st.session_state.get("key") != key:
         model, calibrator = anchor_model()
-        ctx = build_race_context(clean, event, focal)
+        ctx = build_race_context(clean, event, season, focal)
         st.session_state.update(
             key=key,
             events=replay_race(event_laps, sectors=sectors, speed=None),

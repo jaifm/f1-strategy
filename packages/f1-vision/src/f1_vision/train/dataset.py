@@ -39,8 +39,8 @@ logger = logging.getLogger(__name__)
 META_COLUMNS = ["season", "event", "driver", "lap_number", "stint_number", "pace_delta_current"]
 
 
-def sectors_path(output_dir: Path, event: str) -> Path:
-    return output_dir / "vision" / f"sectors_{event.replace(' ', '_')}.parquet"
+def sectors_path(output_dir: Path, season: int, event: str) -> Path:
+    return output_dir / "vision" / f"sectors_{season}_{event.replace(' ', '_')}.parquet"
 
 
 def build_event_sectors(
@@ -51,7 +51,7 @@ def build_event_sectors(
     vision_config: F1VisionConfig,
 ) -> pd.DataFrame:
     """Sector tables for every lap of one race; cached to parquet."""
-    path = sectors_path(ingest_config.output_dir, event)
+    path = sectors_path(ingest_config.output_dir, season, event)
     if path.exists():
         return pd.read_parquet(path)
 

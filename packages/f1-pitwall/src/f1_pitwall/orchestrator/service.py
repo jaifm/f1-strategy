@@ -186,12 +186,16 @@ class PitwallOrchestrator:
         )
 
 
-def build_race_context(clean_laps: pd.DataFrame, event: str, driver: str) -> RaceContext:
-    """Race context from an event's clean laps (same recipe as the v1 dashboard)."""
-    laps_e = add_event_benchmark(clean_laps[clean_laps["event"] == event])
+def build_race_context(
+    clean_laps: pd.DataFrame, event: str, season: int, driver: str
+) -> RaceContext:
+    """Race context from a race's clean laps (same recipe as the v1 dashboard)."""
+    laps_e = add_event_benchmark(
+        clean_laps[(clean_laps["event"] == event) & (clean_laps["season"] == season)]
+    )
     return RaceContext(
         event=event,
-        season=int(laps_e["season"].iloc[0]),
+        season=season,
         driver=driver,
         team=str(laps_e.loc[laps_e["driver"] == driver, "team"].mode().iloc[0]),
         track_temp=float(laps_e["track_temp"].median()),

@@ -44,12 +44,17 @@ class ModelConfig(BaseModel):
 class EvaluationConfig(BaseModel):
     """Settings for the calibration study (spec §1.3 deliverable)."""
 
-    mode: Literal["single_split", "leave_one_event_out"] = Field(
+    mode: Literal["single_split", "leave_one_event_out", "walk_forward"] = Field(
         default="leave_one_event_out",
         description=(
             "leave_one_event_out rotates every event through the test slot and pools "
-            "coverage — single-split coverage on one season swings ±10% with the seed."
+            "coverage. walk_forward tests each test_season event with a model trained "
+            "only on strictly earlier rounds (expanding window)."
         ),
+    )
+    test_season: int = Field(default=2025, description="walk_forward: season under test.")
+    walk_calib_events: int = Field(
+        default=4, description="walk_forward: most recent prior events used for CQR."
     )
     calibration_fraction: float = Field(default=0.2)
     test_fraction: float = Field(default=0.2)

@@ -135,6 +135,57 @@ def _run_fold(
     )
 
 
+def _walk_forward_folds(
+    clean: pd.DataFrame,
+    params: QuantileModelParams,
+    eval_config: EvaluationConfig,
+) -> list[_FoldResult]:
+    """One fold per test-season event, trained on strictly earlier rounds.
+
+    Expanding window in (season, round) order: earlier test-season events join
+    the training set of later folds. The CQR calibration set is the most recent
+    ``walk_calib_events`` prior events — conformity drifts with regulations and
+    tire generations, so recent races calibrate better than random ones.
+    """
+    keys = (
+        clean[["season", "round", "event"]]
+        .drop_duplicates()
+        .sort_values(["season", "round"])
+        .reset_index(drop=True)
+    )
+    if (keys["round"] == 0).any():
+        raise ValueError("walk_forward needs the `round` column — re-run ingest")
+    test_keys = keys[keys["season"] == eval_config.test_season]
+    if test_keys.empty:
+        raise ValueError(f"No events for test_season {eval_config.test_season}")
+
+    folds = []
+    for i, row in enumerate(test_keys.itertuples(index=False)):
+        prior = keys[
+            (keys["season"] < row.season)
+            | ((keys["season"] == row.season) & (keys["round"] < row.round))
+        ]
+        calib_keys = prior.tail(eval_config.walk_calib_events)
+        train_keys = prior.iloc[: len(prior) - len(calib_keys)]
+        if train_keys.empty or calib_keys.empty:
+            logger.info("skipping %s: insufficient history", row.event)
+            continue
+
+        def take(selected: pd.DataFrame) -> pd.DataFrame:
+            return clean.merge(selected[["season", "event"]], on=["season", "event"])
+
+        test = clean[(clean["season"] == row.season) & (clean["event"] == row.event)]
+        folds.append(_run_fold(take(train_keys), take(calib_keys), test, params, eval_config))
+        logger.info(
+            "walk-forward fold %d/%d: %s (train %d events) done",
+            i + 1,
+            len(test_keys),
+            row.event,
+            len(train_keys),
+        )
+    return folds
+
+
 def _loo_folds(
     clean: pd.DataFrame,
     params: QuantileModelParams,
@@ -170,7 +221,9 @@ def run_calibration_study(
         clean = add_event_benchmark(clean)
 
     params = _params_from_config(model_config)
-    if eval_config.mode == "leave_one_event_out":
+    if eval_config.mode == "walk_forward":
+        folds = _walk_forward_folds(clean, params, eval_config)
+    elif eval_config.mode == "leave_one_event_out":
         folds = _loo_folds(clean, params, eval_config)
     else:
         split = split_by_event(

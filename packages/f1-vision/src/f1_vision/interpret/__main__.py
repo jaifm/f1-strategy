@@ -13,7 +13,7 @@ from f1_vision.config import load_config
 from f1_vision.imaging.tab2img import ChannelScaler
 from f1_vision.interpret.saliency import build_atlas, gradcam_maps
 from f1_vision.train.dataset import build_samples, sectors_path
-from f1_vision.train.study import load_checkpoint, split_events
+from f1_vision.train.study import load_checkpoint, split_events, take_races
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -31,12 +31,12 @@ def main(argv: list[str] | None = None) -> None:
     scaler = ChannelScaler.load(ckpt_dir / "scaler.pkl")
 
     laps = pd.read_parquet(core.ingest.output_dir / "laps.parquet")
-    test_events = split_events(core, vision)["test"]
+    test_pairs = split_events(core, vision)["test"]
     sectors = pd.concat(
-        [pd.read_parquet(sectors_path(core.ingest.output_dir, e)) for e in test_events],
+        [pd.read_parquet(sectors_path(core.ingest.output_dir, s, e)) for s, e in test_pairs],
         ignore_index=True,
     )
-    test = build_samples(laps[laps["event"].isin(test_events)], sectors, scaler, vision)
+    test = build_samples(take_races(laps, test_pairs), sectors, scaler, vision)
 
     # tyre age at each sample's anchor lap, from the lap table
     age = test.meta.merge(

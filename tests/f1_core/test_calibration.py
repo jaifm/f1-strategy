@@ -64,6 +64,23 @@ def test_normalized_study_runs(synthetic: pd.DataFrame, tmp_path: Path) -> None:
     assert report.metrics["picp_cqr_pooled"] > 0.5
 
 
+def test_walk_forward_uses_only_prior_rounds(synthetic: pd.DataFrame, tmp_path: Path) -> None:
+    eval_config = EvaluationConfig(
+        mode="walk_forward",
+        test_season=2024,
+        walk_calib_events=2,
+        per_event_normalization=True,
+        artifacts_dir=tmp_path / "artifacts_wf",
+    )
+    report = run_calibration_study(synthetic, FAST_MODEL, eval_config)
+    n_events = synthetic["event"].nunique()
+    # first folds lack history (need >= 1 train + 2 calib events) and are skipped
+    assert report.metrics["n_folds"] == n_events - 3
+    assert "Race0" not in set(report.coverage_per_event["event"])
+    assert "Race9" in set(report.coverage_per_event["event"])
+    assert 0.5 <= report.metrics["picp_cqr_pooled"] <= 1.0
+
+
 def test_leave_one_event_out_pools_every_event(synthetic: pd.DataFrame, tmp_path: Path) -> None:
     eval_config = EvaluationConfig(
         mode="leave_one_event_out",

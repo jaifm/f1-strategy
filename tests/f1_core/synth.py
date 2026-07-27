@@ -25,6 +25,7 @@ def make_synthetic(n_events: int = 8, race_laps: int = 50, seed: int = 42) -> pd
                 rows.append(
                     {
                         "season": 2024,
+                        "round": e + 1,
                         "event": f"Race{e}",
                         "driver": driver,
                         "team": team,

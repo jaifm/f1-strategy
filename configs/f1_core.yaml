@@ -1,6 +1,7 @@
 # f1-core configuration. Every tunable lives here, not in code (see PROJECT_SPEC.md §0).
 ingest:
-  seasons: [2024]
+  # Full ground-effect regulation era (2026 resets the rules).
+  seasons: [2022, 2023, 2024, 2025]
   session: R
   cache_dir: data/fastf1_cache
   output_dir: data/processed
@@ -19,7 +20,11 @@ model:
   seed: 7
 
 evaluation:
-  mode: leave_one_event_out
+  # walk_forward: each test_season event is predicted by a model trained only on
+  # strictly earlier rounds (expanding window) — no future data ever in training.
+  mode: walk_forward
+  test_season: 2025
+  walk_calib_events: 4
   calibration_fraction: 0.2
   test_fraction: 0.2
   split_seed: 11

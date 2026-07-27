@@ -43,13 +43,16 @@ RAW_COLUMNS = [
 TIMEDELTA_COLUMNS = ("LapTime", "PitInTime", "PitOutTime", "Time")
 
 
-def session_to_laps(session: fastf1.core.Session, season: int, event: str) -> pd.DataFrame:
+def session_to_laps(
+    session: fastf1.core.Session, season: int, event: str, round_number: int = 0
+) -> pd.DataFrame:
     """Convert a loaded FastF1 session into the raw lap frame (float-second times)."""
     laps = session.laps[RAW_COLUMNS].copy()
     for col in TIMEDELTA_COLUMNS:
         laps[col] = laps[col].dt.total_seconds()
     laps["Season"] = season
     laps["Event"] = event
+    laps["Round"] = round_number
     laps["TotalLaps"] = session.total_laps
 
     weather = session.weather_data[["Time", "AirTemp", "TrackTemp", "Rainfall"]].copy()
@@ -75,6 +78,8 @@ def to_output_schema(laps: pd.DataFrame) -> pd.DataFrame:
             "team": laps["Team"],
             "event": laps["Event"],
             "season": laps["Season"],
+            # Chronological order within a season; 0 when absent (old fixtures).
+            "round": laps["Round"] if "Round" in laps.columns else 0,
             "lap_number": laps["LapNumber"],
             "lap_time_s": laps["LapTime"],
             "compound": laps["Compound"],
@@ -123,7 +128,7 @@ def run_etl(config: IngestConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
             except Exception:  # noqa: BLE001 — one bad event must not kill the season
                 logger.exception("Failed to load %s %s — skipping", season, event_name)
                 continue
-            frames.append(session_to_laps(session, season, event_name))
+            frames.append(session_to_laps(session, season, event_name, int(row["RoundNumber"])))
             logger.info("Loaded %s %s: %d laps", season, event_name, len(frames[-1]))
 
     if not frames:

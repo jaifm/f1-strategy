@@ -158,7 +158,15 @@ class TestWindowMovesWithFusion:
 
 
 def test_resolve_event() -> None:
-    laps = pd.DataFrame({"event": ["Bahrain Grand Prix", "Austrian Grand Prix"]})
-    assert resolve_event(laps, "Bahrain 2024") == "Bahrain Grand Prix"
+    laps = pd.DataFrame(
+        {
+            "event": ["Bahrain Grand Prix", "Bahrain Grand Prix", "Austrian Grand Prix"],
+            "season": [2022, 2024, 2024],
+        }
+    )
+    assert resolve_event(laps, "Bahrain 2022") == ("Bahrain Grand Prix", 2022)
+    assert resolve_event(laps, "bahrain") == ("Bahrain Grand Prix", 2024)  # latest season
     with pytest.raises(SystemExit):
         resolve_event(laps, "Monaco 2024")
+    with pytest.raises(SystemExit):
+        resolve_event(laps, "Bahrain 2023")  # no data for that season
