@@ -28,5 +28,10 @@ jobs:
       - name: Type-check f1-core
         run: uv run mypy
 
-      - name: Tests
-        run: uv run pytest --cov --cov-report=term-missing
+      # Two invocations: LightGBM (Homebrew/OMP) and PyTorch (bundled OMP)
+      # deadlock when both load into one process — see artifacts/phase2/FINDINGS.md.
+      - name: Tests (core + pitwall)
+        run: uv run pytest tests/f1_core tests/f1_pitwall --cov
+
+      - name: Tests (vision)
+        run: uv run pytest tests/f1_vision --cov --cov-append --cov-report=term-missing

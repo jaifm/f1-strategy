@@ -1,5 +1,15 @@
 # Phase 2 — Findings (f1-vision research lab, 2024 season)
 
+## §2.7 acceptance checklist
+
+- [x] Proxy sanity harness passes physical-plausibility checks; artifacts committed
+- [x] Dataset builder produces tensors + labels for a full season, reusing Phase 1 filtering
+- [x] All four baselines trained and compared on identical event-held-out splits
+- [x] CNN-LSTM beats flattened LightGBM — **it does not**; documented honestly below,
+      and per spec the Phase 3 fusion layer uses the best model (persistence)
+- [x] Saliency Atlas generated (`saliency_atlas.md` / `.png`)
+- [x] Checkpoints + scaler versioned, loadable via one factory (`study.load_checkpoint`)
+
 ## §2.5 Baseline study — an honest negative result
 
 Four models, identical event-held-out splits (14 train / 3 val / 4 test events;
@@ -47,6 +57,23 @@ streams (7 ms–1 s spacing) explode differentiation (g_lat 79 g before the fix)
 
 `tab2img_frames_VER_lap9.png`: straights vs corner sectors produce visibly
 distinct 5×5 textures; per-event train-split scaler persisted with checkpoints.
+
+## §2.6 Saliency atlas — hypothesis not supported
+
+Grad-CAM quadrant attention shares (pace head, held-out test events):
+
+| group | n | I energy | II dynamics | III driver | IV context |
+|---|---|---|---|---|---|
+| fresh (age ≤ 5) | 89 | 12.2% | 29.0% | 11.4% | 28.4% |
+| mid-stint (10–20) | 1158 | 7.8% | 35.4% | 7.2% | 26.9% |
+| pre-cliff (label = 1) | 415 | **5.5%** | 34.6% | 5.3% | 27.9% |
+
+The hypothesized shift toward Quadrant I (Energy) pre-cliff does NOT occur —
+energy attention *decreases* with degradation. The hot cells throughout are
+`g_long` and `rpm`, drifting into fuel/context pre-cliff: the CNN reads
+longitudinal dynamics and context, not friction-work textures. Read alongside
+§2.5: this is a weak model's attention (it loses to persistence), so the atlas
+diagnoses *why* the image structure failed to help rather than validating it.
 
 ## Engineering note (macOS)
 

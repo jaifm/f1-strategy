@@ -20,7 +20,8 @@ Requires [uv](https://docs.astral.sh/uv/) (Python 3.12 is provisioned automatica
 
 ```bash
 uv sync                 # install workspace + dev tools
-uv run pytest           # run tests
+uv run pytest tests/f1_core tests/f1_pitwall   # core tests
+uv run pytest tests/f1_vision                  # vision tests (separate: see below)
 uv run ruff check .     # lint
 uv run ruff format .    # format
 uv run mypy             # type-check f1-core (strict)
@@ -64,3 +65,7 @@ data/             # gitignored: FastF1 cache + processed parquet
 - Config via pydantic-settings / YAML — no hardcoded magic numbers.
 - Event-level train/calibration/test splits everywhere; never split within a race.
 - Honest reporting: baseline comparisons ship in the final artifacts even when the fancy model loses.
+- **Never import LightGBM and PyTorch into the same process** (their two OpenMP
+  runtimes deadlock on macOS — see `artifacts/phase2/FINDINGS.md`). That is why the
+  test suite runs as two invocations and the vision study calls LightGBM via
+  `f1_vision.train.lgbm_worker`.

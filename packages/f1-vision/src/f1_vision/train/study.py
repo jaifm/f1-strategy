@@ -41,10 +41,8 @@ QUAD_ROWS = [i for i, _ in GRID_CELLS]
 QUAD_COLS = [j for _, j in GRID_CELLS]
 
 
-def assemble_datasets(
-    core: F1CoreConfig, vision: F1VisionConfig
-) -> tuple[dict[str, VisionDataset], ChannelScaler]:
-    """Event-level train/val/test datasets sharing one train-fit scaler."""
+def split_events(core: F1CoreConfig, vision: F1VisionConfig) -> dict[str, list[str]]:
+    """Deterministic event-level split shared by the study and the saliency atlas."""
     cfg = vision.train
     laps = pd.read_parquet(core.ingest.output_dir / "laps.parquet")
     events = sorted(
@@ -55,18 +53,26 @@ def assemble_datasets(
     order = np.random.default_rng(cfg.split_seed).permutation(len(events))
     n_test = max(1, round(len(events) * cfg.test_fraction))
     n_val = max(1, round(len(events) * cfg.val_fraction))
-    split_events = {
+    return {
         "test": [events[i] for i in order[:n_test]],
         "val": [events[i] for i in order[n_test : n_test + n_val]],
         "train": [events[i] for i in order[n_test + n_val :]],
     }
-    logger.info("split events: %s", {k: len(v) for k, v in split_events.items()})
+
+
+def assemble_datasets(
+    core: F1CoreConfig, vision: F1VisionConfig
+) -> tuple[dict[str, VisionDataset], ChannelScaler]:
+    """Event-level train/val/test datasets sharing one train-fit scaler."""
+    laps = pd.read_parquet(core.ingest.output_dir / "laps.parquet")
+    splits = split_events(core, vision)
+    logger.info("split events: %s", {k: len(v) for k, v in splits.items()})
 
     def load_sectors(event_list: list[str]) -> pd.DataFrame:
         frames = [pd.read_parquet(sectors_path(core.ingest.output_dir, e)) for e in event_list]
         return pd.concat(frames, ignore_index=True)
 
-    train_sectors = load_sectors(split_events["train"])
+    train_sectors = load_sectors(splits["train"])
     fit_frame = train_sectors.merge(
         laps[
             ["event", "driver", "lap_number", "tyre_age", "fuel_proxy", "track_temp", "stint_lap"]
@@ -76,7 +82,7 @@ def assemble_datasets(
     scaler = ChannelScaler.fit(fit_frame)
 
     datasets = {}
-    for split, event_list in split_events.items():
+    for split, event_list in splits.items():
         sectors = train_sectors if split == "train" else load_sectors(event_list)
         split_laps = laps[laps["event"].isin(event_list)]
         datasets[split] = build_samples(split_laps, sectors, scaler, vision)
