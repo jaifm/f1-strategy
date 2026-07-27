@@ -31,8 +31,10 @@ uv run python -m f1_core.ingest     # ETL (seasons in configs/f1_core.yaml)
 uv run python -m f1_core.evaluate   # calibration study -> artifacts/phase1
 uv run python -m f1_core.simulate   # MC spread validation vs a held-out race
 
-# dashboard
-uv run streamlit run packages/f1-pitwall/src/f1_pitwall/dashboard/pitwall.py
+# dashboards
+uv run streamlit run packages/f1-pitwall/src/f1_pitwall/dashboard/pitwall.py  # v1 strategy compare
+uv run pitwall --race "Bahrain 2024" --speed 10             # live replay pit wall (Phase 3)
+uv run pitwall --race "Bahrain 2024" --speed 0 --headless   # acceptance stats, no UI
 ```
 
 ### Troubleshooting: `ModuleNotFoundError` for workspace packages (macOS)

@@ -54,8 +54,7 @@ def quadrant_shares(saliency: np.ndarray) -> dict[str, float]:
     """Share of total attention per quadrant (center cells excluded)."""
     total = float(saliency.sum()) or 1.0
     return {
-        name: float(saliency[rows, cols].sum()) / total
-        for name, (rows, cols) in QUADRANTS.items()
+        name: float(saliency[rows, cols].sum()) / total for name, (rows, cols) in QUADRANTS.items()
     }
 
 

@@ -18,8 +18,8 @@ def test_imports(module: str) -> None:
     importlib.import_module(module)
 
 
-def test_cli_stub_raises_not_implemented() -> None:
+def test_cli_requires_race_argument() -> None:
     from f1_pitwall.cli import main
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(SystemExit):
         main([])

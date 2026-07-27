@@ -30,6 +30,15 @@ evaluation:
   per_event_normalization: true
   artifacts_dir: artifacts/phase1
 
+fusion:
+  half_life_laps: 3.0
+  alpha: 1.0
+  n_sims: 500
+  baseline_laps: 3
+  cliff_score_scale_s: 1.5
+  candidate_window_laps: 15
+  second_compound: HARD
+
 simulation:
   n_sims: 2000
   rho_day: 0.65    # calibrated vs 2024 stint-residual variance (validate.py)

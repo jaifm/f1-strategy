@@ -84,6 +84,22 @@ class SimulationConfig(BaseModel):
     seed: int = Field(default=7)
 
 
+class FusionConfig(BaseModel):
+    """Phase 3 fusion rule (spec §3.2). Pace/cliff inputs come from persistence
+    (best §2.5 model): current clean-lap delta vs the stint baseline."""
+
+    half_life_laps: float = Field(default=3.0, description="Decay of the median shift.")
+    alpha: float = Field(default=1.0, description="Spread inflation: 1 + alpha * p_cliff.")
+    n_sims: int = Field(default=500, description="Fast per-lap MC re-run.")
+    baseline_laps: int = Field(default=3, description="Clean laps forming the stint baseline.")
+    cliff_score_scale_s: float = Field(
+        default=1.5,
+        description="p_cliff = clip(current_delta / scale, 0, 1) — persistence heuristic.",
+    )
+    candidate_window_laps: int = Field(default=15, description="Stop laps evaluated ahead.")
+    second_compound: str = Field(default="HARD", description="Tire fitted at the candidate stop.")
+
+
 class F1CoreConfig(BaseModel):
     """Root config for the f1-core package."""
 
@@ -91,6 +107,7 @@ class F1CoreConfig(BaseModel):
     model: ModelConfig = Field(default_factory=ModelConfig)
     evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
     simulation: SimulationConfig = Field(default_factory=SimulationConfig)
+    fusion: FusionConfig = Field(default_factory=FusionConfig)
 
 
 def load_config(path: Path | str | None = None) -> F1CoreConfig:
