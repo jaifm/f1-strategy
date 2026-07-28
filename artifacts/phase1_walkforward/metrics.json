@@ -1,0 +1,22 @@
+{
+  "mode": "walk_forward",
+  "n_folds": 21,
+  "n_test_laps_pooled": 11650,
+  "per_event_normalization": true,
+  "target_coverage": 0.9,
+  "picp_raw_pooled": 0.6766523605150214,
+  "picp_cqr_pooled": 0.8742489270386266,
+  "events_within_band": "2/21",
+  "mean_cqr_margin_s": 0.5978065534299734,
+  "mean_width_raw_s": 2.438699125596665,
+  "mean_width_cqr_s": 3.603769738470354,
+  "pinball_q05_quantile_model": 0.15223760407203607,
+  "pinball_q05_mse_baseline": 0.695520448916643,
+  "pinball_q50_quantile_model": 0.4620309953200205,
+  "pinball_q50_mse_baseline": 0.47199434678748675,
+  "pinball_q95_quantile_model": 0.14505746801404204,
+  "pinball_q95_mse_baseline": 0.24846824465833034,
+  "upper_spread_widening_HARD_s": -0.27990910588796747,
+  "upper_spread_widening_MEDIUM_s": -0.21186093168269293,
+  "upper_spread_widening_SOFT_s": -0.2221969330990068
+}

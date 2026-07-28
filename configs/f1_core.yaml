@@ -33,7 +33,7 @@ evaluation:
   # Required for cross-track transfer: raw global model achieves 16% raw coverage
   # because held-out events are unseen categories (spec §1.3 fallback, adopted).
   per_event_normalization: true
-  artifacts_dir: artifacts/phase1
+  artifacts_dir: artifacts/phase1_walkforward
 
 fusion:
   half_life_laps: 3.0

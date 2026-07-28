@@ -57,6 +57,19 @@ def test_session_to_laps() -> None:
     assert laps.sort_values("LapNumber")["TrackTemp"].tolist() == [35.0, 40.0, 40.0]
 
 
+def test_output_schema_handles_missing_stint() -> None:
+    """Regression: a NaN Stint must not produce a NaN stint_lap (int column)."""
+    from f1_core.config import IngestConfig
+    from f1_core.ingest.etl import to_output_schema
+    from f1_core.ingest.filters import apply_filters
+
+    laps = session_to_laps(FakeSession(), 2024, "Testville")
+    laps.loc[1, "Stint"] = np.nan
+    out = to_output_schema(apply_filters(laps, IngestConfig()).laps)
+    assert out["stint_lap"].notna().all()
+    assert out["stint_lap"].dtype.kind == "i"
+
+
 def test_validate_stint_spread_on_synthetic() -> None:
     laps = make_synthetic(n_events=5)
     result = validate_stint_spread(

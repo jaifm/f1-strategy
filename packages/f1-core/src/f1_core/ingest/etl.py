@@ -85,7 +85,13 @@ def to_output_schema(laps: pd.DataFrame) -> pd.DataFrame:
             "compound": laps["Compound"],
             "tyre_age": laps["TyreLife"],
             "stint_number": laps["Stint"],
-            "stint_lap": laps.groupby(["Season", "Event", "Driver", "Stint"]).cumcount() + 1,
+            # dropna=False: laps with an unknown Stint still need a stint_lap —
+            # the default drops those rows and yields NaN, which breaks the int
+            # schema (seen on 2022/2023/2025 data, absent from 2024).
+            "stint_lap": laps.groupby(
+                ["Season", "Event", "Driver", "Stint"], dropna=False
+            ).cumcount()
+            + 1,
             "track_temp": laps["TrackTemp"],
             "air_temp": laps["AirTemp"],
             # Linear-burn fuel proxy: laps remaining (incl. this one) / total laps.
