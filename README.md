@@ -19,7 +19,7 @@ negative ones; the detail lives in each phase's `FINDINGS.md`.
 | Does the risk spread blow up with tyre age (the "tyre cliff")? | **No** — flat or slightly shrinking on every compound, and still absent with 3.5× the data | [walk-forward](artifacts/phase1_walkforward/FINDINGS.md) |
 | Does the Monte Carlo engine reproduce real race-time spread? | **Yes** — spread ratio ≈ 1 on held-out races; 2000 sims × 57 laps well under 2 s | [phase 1](artifacts/phase1/FINDINGS.md) |
 | Does a CNN-LSTM on telemetry "energy images" beat simple baselines? | **No — even with 3–4× the data.** Carrying the current pace forward (persistence) wins on both tasks and has the best pace error at all 21 races of 2025 | [phase 2 walk-forward](artifacts/phase2_walkforward/FINDINGS.md) |
-| What does the CNN actually look at? | Longitudinal dynamics and context — *not* the energy channels the design hypothesised | [saliency atlas](artifacts/phase2/saliency_atlas.md) |
+| What does the CNN actually look at? | Not the energy channels the design hypothesised, on either dataset. On 2025 its attention is spread evenly and barely changes as tyres wear — consistent with it carrying no cliff signal | [2025 atlas](artifacts/phase2_walkforward/saliency_atlas.md) |
 | Does live fusion improve strategy calls? | **Yes, in the case study:** on Pérez's Mexico 2024 collapse, fusion recommended boxing on lap 42 — the lap the team actually pitted — while the static model said 47 | [phase 3](artifacts/phase3/FINDINGS.md) |
 
 **The through-line:** in dry, green-flag, clean-air running, tyre degradation is gradual

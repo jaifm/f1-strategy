@@ -37,6 +37,33 @@ widening on any compound with 3.5× data), this settles the Phase 2 question for
 this data: **the negative result is a property of dry, clean-lap racing, not a
 small-sample artifact.** Next-few-laps pace is dominated by its current value.
 
+## Saliency atlas on 2025 (`saliency_atlas.md` / `.png`)
+
+Grad-CAM on the four-season CNN, all 21 test races of 2025 (quadrant share of
+attention; the remainder falls on the centre blend cells):
+
+| group | n | I energy | II dynamics | III driver | IV context | centre cross |
+|---|---|---|---|---|---|---|
+| fresh (age ≤ 5) | 386 | 16.0% | 15.8% | 12.5% | 16.5% | 39% |
+| mid-stint (10–20) | 5,455 | 17.1% | 15.8% | 14.0% | 14.6% | 38% |
+| pre-cliff | 1,451 | 16.8% | 14.9% | 13.0% | 15.6% | 40% |
+
+- **Hypothesis not supported, again.** Energy attention is flat across tyre
+  states (16.0 → 17.1 → 16.8%); pre-cliff sits 0.3 points *below* mid-stint.
+- **The model's attention barely changes with degradation at all** — the three
+  maps are near-identical. That matches its cliff PR-AUC sitting close to the base
+  rate: it is not reading a degradation signal, so it has nothing to shift toward.
+- **What changed from the 2024 model:** attention is spread evenly over the four
+  quadrants (13–17% each) instead of concentrating on dynamics and context
+  (29–35%), and about 40% now lands on the centre cross — the blended cells that
+  mix neighbouring quadrants — versus 19–27% before. Caveat: those cells are
+  averages of quadrant cells, so attribution there is to derived values, not new
+  information.
+- **Generator fix:** the atlas verdict was a bare "pre-cliff > fresh" check, which
+  first labelled this run's 0.8-point wobble "SUPPORTED". It now requires
+  pre-cliff to exceed *both* earlier groups by ≥ 2 points (tested both ways). The
+  2024 verdict (12.2% → 5.5%) is unchanged under the new rule.
+
 ## Fixes that made this run possible
 
 - ~1,000 laps (2022 Austria/Monaco, 2023 Canada, 2025 Miami/Belgium/Australia)

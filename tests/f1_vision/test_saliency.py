@@ -36,3 +36,26 @@ def test_build_atlas_writes_artifacts(tmp_path: Path) -> None:
     assert (tmp_path / "saliency_atlas.png").exists()
     assert (tmp_path / "saliency_atlas.md").exists()
     assert len(table) == 3
+
+
+def test_atlas_verdict_needs_a_real_monotonic_shift(tmp_path: Path) -> None:
+    """Regression: a noise-level, non-monotonic change must not read as support."""
+
+    def maps_with_energy(share: float, n: int) -> np.ndarray:
+        m = np.full((n, 5, 5), 1.0)
+        m[:, 0:2, 0:2] = share * 25 / 4  # quadrant I carries ~`share` of the mass
+        return m
+
+    age = np.array([1.0] * 10 + [15.0] * 10 + [30.0] * 10)
+    cliff = np.array([0] * 20 + [1] * 10, dtype=np.float32)
+    noisy = np.concatenate(
+        [maps_with_energy(0.160, 10), maps_with_energy(0.171, 10), maps_with_energy(0.168, 10)]
+    )
+    build_atlas(noisy, age, cliff, tmp_path)
+    assert "NOT SUPPORTED" in (tmp_path / "saliency_atlas.md").read_text()
+
+    rising = np.concatenate(
+        [maps_with_energy(0.10, 10), maps_with_energy(0.12, 10), maps_with_energy(0.30, 10)]
+    )
+    build_atlas(rising, age, cliff, tmp_path)
+    assert "**SUPPORTED**" in (tmp_path / "saliency_atlas.md").read_text()

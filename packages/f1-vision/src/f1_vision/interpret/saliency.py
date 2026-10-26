@@ -63,6 +63,7 @@ def build_atlas(
     tyre_age: np.ndarray,
     cliff: np.ndarray,
     out_dir: Path,
+    min_shift: float = 0.02,
 ) -> pd.DataFrame:
     """Write the atlas PNG + markdown report; return the quadrant-share table."""
     groups = {
@@ -87,9 +88,17 @@ def build_atlas(
     plt.close(fig)
 
     table = pd.DataFrame(rows)
-    fresh_i = table.loc[0, "I_energy"]
-    cliff_i = table.loc[2, "I_energy"]
-    verdict = "SUPPORTED" if cliff_i > fresh_i else "NOT SUPPORTED"
+    fresh_i, mid_i, cliff_i = table["I_energy"].tolist()
+    # A shift must clear BOTH earlier groups by ``min_shift`` (2 points of
+    # attention share by default): a bare "pre-cliff > fresh" comparison
+    # labelled a 0.8-point, non-monotonic wobble as support.
+    shift = cliff_i - max(fresh_i, mid_i)
+    verdict = (
+        "SUPPORTED"
+        if shift >= min_shift
+        else f"NOT SUPPORTED (pre-cliff exceeds earlier groups by {shift:+.1%}, "
+        f"threshold {min_shift:.0%})"
+    )
     report = (
         "# Saliency Atlas (spec §2.6)\n\n"
         "Grad-CAM on the CNN encoder (pace head), held-out test events, averaged per group.\n"
@@ -97,7 +106,8 @@ def build_atlas(
         "weak model's attention, it is not evidence the textures are predictive.\n\n"
         f"```\n{table.round(3).to_string(index=False)}\n```\n\n"
         f"**Hypothesis** (attention shifts toward Quadrant I / Energy pre-cliff): "
-        f"**{verdict}** — Quadrant I share {fresh_i:.1%} (fresh) → {cliff_i:.1%} (pre-cliff).\n\n"
+        f"**{verdict}** — Quadrant I share {fresh_i:.1%} (fresh) → {mid_i:.1%} (mid-stint) "
+        f"→ {cliff_i:.1%} (pre-cliff).\n\n"
         "![atlas](saliency_atlas.png)\n"
     )
     (out_dir / "saliency_atlas.md").write_text(report)
