@@ -6,6 +6,28 @@ A monorepo containing three linked projects (see [PROJECT_SPEC.md](PROJECT_SPEC.
 2. **`f1-vision`** — deep-learning research lab: telemetry → physics proxies → 5×5 "energy image" frames → CNN-LSTM degradation detector with Grad-CAM interpretability.
 3. **`f1-pitwall`** — integration layer: race replay orchestrator fusing both models into a live Streamlit pit-wall dashboard.
 
+## Findings at a glance
+
+Data: the full ground-effect regulation era, **2022–2025** — 101,290 laps, 44,098 clean
+laps across 92 races. Every result below is reported honestly, including the
+negative ones; the detail lives in each phase's `FINDINGS.md`.
+
+| Question | Answer | Evidence |
+|---|---|---|
+| Does a quantile model beat a standard MSE model on risk? | **Yes, decisively.** Tail pinball loss: q05 0.152 vs 0.696, q95 0.145 vs 0.248 | [walk-forward](artifacts/phase1_walkforward/FINDINGS.md) |
+| Are the uncertainty intervals calibrated on unseen future races? | **Nearly.** 87.4% coverage vs a 90% target, rising from 84% to 92% as the 2025 season accumulates | [walk-forward](artifacts/phase1_walkforward/FINDINGS.md) |
+| Does the risk spread blow up with tyre age (the "tyre cliff")? | **No** — flat or slightly shrinking on every compound, and still absent with 3.5× the data | [walk-forward](artifacts/phase1_walkforward/FINDINGS.md) |
+| Does the Monte Carlo engine reproduce real race-time spread? | **Yes** — spread ratio ≈ 1 on held-out races; 2000 sims × 57 laps well under 2 s | [phase 1](artifacts/phase1/FINDINGS.md) |
+| Does a CNN-LSTM on telemetry "energy images" beat simple baselines? | **No.** Carrying the current pace forward (persistence) wins on both tasks | [phase 2](artifacts/phase2/FINDINGS.md) |
+| What does the CNN actually look at? | Longitudinal dynamics and context — *not* the energy channels the design hypothesised | [saliency atlas](artifacts/phase2/saliency_atlas.md) |
+| Does live fusion improve strategy calls? | **Yes, in the case study:** on Pérez's Mexico 2024 collapse, fusion recommended boxing on lap 42 — the lap the team actually pitted — while the static model said 47 | [phase 3](artifacts/phase3/FINDINGS.md) |
+
+**The through-line:** in dry, green-flag, clean-air running, tyre degradation is gradual
+and strongly autocorrelated. Quantile modelling of that is valuable; hunting for a
+sudden cliff in clean-lap data is not, because the filters (and the teams' own pit
+calls) remove most of it. Note: the vision results (Phase 2) were trained on 2024
+telemetry only; extending them to all four seasons is the main open item.
+
 ## Quickstart
 
 Requires [uv](https://docs.astral.sh/uv/) (Python 3.12 is provisioned automatically). On macOS, LightGBM also needs OpenMP: `brew install libomp`.
@@ -28,7 +50,7 @@ uv run mypy             # type-check f1-core (strict)
 
 # pipeline
 uv run python -m f1_core.ingest     # ETL (seasons in configs/f1_core.yaml)
-uv run python -m f1_core.evaluate   # calibration study -> artifacts/phase1
+uv run python -m f1_core.evaluate   # walk-forward study -> artifacts/phase1_walkforward
 uv run python -m f1_core.simulate   # MC spread validation vs a held-out race
 
 # dashboards
