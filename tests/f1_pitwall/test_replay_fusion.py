@@ -170,3 +170,19 @@ def test_resolve_event() -> None:
         resolve_event(laps, "Monaco 2024")
     with pytest.raises(SystemExit):
         resolve_event(laps, "Bahrain 2023")  # no data for that season
+
+
+def test_prior_races_excludes_this_and_later_races() -> None:
+    from f1_pitwall.orchestrator.service import prior_races
+
+    clean = pd.DataFrame(
+        {
+            "season": [2023, 2024, 2024, 2024, 2025],
+            "round": [20, 19, 20, 21, 1],
+            "event": ["Mexico", "Austin", "Mexico", "Brazil", "Australia"],
+        }
+    )
+    kept = prior_races(clean, 2024, "Mexico")
+    assert list(zip(kept.season, kept.event, strict=True)) == [(2023, "Mexico"), (2024, "Austin")]
+    with pytest.raises(ValueError):
+        prior_races(clean, 2022, "Mexico")

@@ -26,6 +26,7 @@ from f1_pitwall.orchestrator.replay import TelemetryFrame, replay_race
 from f1_pitwall.orchestrator.service import (
     PitwallOrchestrator,
     build_race_context,
+    prior_races,
     train_strategy_model,
 )
 
@@ -55,12 +56,13 @@ def load_data(race: str) -> tuple[pd.DataFrame, pd.DataFrame, str, int, pd.DataF
 
 
 @st.cache_resource
-def anchor_model():
+def anchor_model(season: int, event: str):
+    """Anchor trained only on races before the one being replayed (no lookahead)."""
     laps = pd.read_parquet(CONFIG.ingest.output_dir / "laps.parquet")
     clean = add_event_benchmark(
         laps[laps["is_clean"] & laps[TARGET].notna()].reset_index(drop=True)
     )
-    return train_strategy_model(clean, CONFIG)
+    return train_strategy_model(prior_races(clean, season, event), CONFIG)
 
 
 def frame_figure(sectors: pd.DataFrame) -> go.Figure:
@@ -91,7 +93,7 @@ def main() -> None:
 
     key = f"{event}-{focal}-{fusion_on}"
     if st.session_state.get("key") != key:
-        model, calibrator = anchor_model()
+        model, calibrator = anchor_model(season, event)
         ctx = build_race_context(clean, event, season, focal)
         st.session_state.update(
             key=key,

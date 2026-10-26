@@ -1,5 +1,14 @@
 # Phase 3 — Findings (f1-pitwall integration layer)
 
+> **Correction (2026-10-26, four-season re-run).** The original case study below
+> overstated its result. (1) Its pre-race model was trained on *every* race,
+> including Mexico 2024 itself — a lookahead leak. (2) Pérez stopped at the end of
+> lap **43**, not 42 (42 was his last *clean* lap; the in-lap is filtered out).
+> (3) The fused recommendation was "box next lap" on every lap of the collapse, so
+> "recommended lap 42 at lap 41" was the earliest-allowed floor, not a pick of a
+> specific lap. See the re-run section at the end; the original text is kept
+> unedited below for the record.
+
 ## §3.4 acceptance checklist
 
 - [x] Replay of a full historical race end-to-end at 10× without drift or crashes
@@ -45,3 +54,37 @@ candidates; `case_fused.csv` / `case_anchor.csv`):
 - Quantile crossing on the full-data anchor fit runs 3.5–5.3% (above the 2%
   guideline that was met in the LOO evaluation); logged by the engine and
   accepted for v1 — the crossing guard sorts affected rows.
+
+
+## Re-run on 2022–2025 with no lookahead (`case_study_PER_mexico_walkforward.png`)
+
+The pit wall now trains its pre-race model only on races **before** the one it
+replays (`prior_races`; `--allow-future` reproduces the old leaky behaviour).
+Pérez, Mexico City 2024, stint 2 = laps 21–43, stop at the end of lap 43.
+
+| | live adjustment | pre-race model only |
+|---|---|---|
+| laps of stint 2 (26–41) recommending "box next lap" | **16 / 16** | 1 / 16 (lap 33) |
+| recommendation at lap 41 | stop after lap 42 | stop after lap 45 |
+| largest pull-forward vs pre-race model | 6 laps | — |
+
+What holds up:
+- **Live adjustment reacts to the collapse and the pre-race model does not.**
+  From lap 26 — 17 laps before the team stopped — the fused recommendation is
+  "box now" every lap, while the pre-race model keeps pushing the stop 2–5 laps
+  out until the stop.
+- **Latency unchanged:** mean 38 ms per lap update (gate 1 s).
+
+What does not:
+- It never singled out a stop lap; it flagged "stop as soon as possible" for 16
+  laps. Whether stopping around lap 26 would have beaten the team's lap 43 is not
+  something this replay can say — there is no counterfactual race to compare.
+
+The leak mattered: trained on all races (incl. this one), the pre-race model
+alone already reached "box now" on 8/16 stint-2 laps, which made live adjustment
+look unnecessary. The honest setup shows the pre-race model alone stays too
+optimistic and live adjustment carries the signal.
+
+CSVs: `case_wf_fused.csv`, `case_wf_anchor.csv`, `case_leak_fused.csv`,
+`case_leak_anchor.csv` (the original 2024-only runs remain as `case_fused.csv` /
+`case_anchor.csv`).

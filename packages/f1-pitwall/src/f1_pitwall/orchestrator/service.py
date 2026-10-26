@@ -35,6 +35,25 @@ from f1_core.simulate.engine import RaceContext, Stint, lap_quantiles, simulate_
 from f1_pitwall.orchestrator.replay import LapCompleted
 
 
+def prior_races(clean_laps: pd.DataFrame, season: int, event: str) -> pd.DataFrame:
+    """Clean laps from races strictly before (season, event) in calendar order.
+
+    Replaying a historical race "live" must only use what was known before it:
+    training the anchor on every lap let the case-study model see the very race
+    it was replaying (and every later one).
+    """
+    race_round = clean_laps.loc[
+        (clean_laps["season"] == season) & (clean_laps["event"] == event), "round"
+    ]
+    if race_round.empty:
+        raise ValueError(f"No clean laps for {event} {season}")
+    rnd = int(race_round.iloc[0])
+    earlier = (clean_laps["season"] < season) | (
+        (clean_laps["season"] == season) & (clean_laps["round"] < rnd)
+    )
+    return clean_laps[earlier]
+
+
 def train_strategy_model(
     clean_laps: pd.DataFrame, config: F1CoreConfig
 ) -> tuple[QuantileLapModel, CQRCalibrator]:

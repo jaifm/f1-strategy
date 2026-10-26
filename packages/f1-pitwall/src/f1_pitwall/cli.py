@@ -48,6 +48,7 @@ def run_headless(args: argparse.Namespace) -> None:
     from f1_pitwall.orchestrator.service import (
         PitwallOrchestrator,
         build_race_context,
+        prior_races,
         train_strategy_model,
     )
 
@@ -58,7 +59,9 @@ def run_headless(args: argparse.Namespace) -> None:
         laps[laps["is_clean"] & laps[TARGET].notna()].reset_index(drop=True)
     )
 
-    model, calibrator = train_strategy_model(clean, config)
+    # Default: anchor trained only on races before this one (no lookahead).
+    train_laps = clean if args.allow_future else prior_races(clean, season, event)
+    model, calibrator = train_strategy_model(train_laps, config)
     ctx = build_race_context(clean, event, season, args.driver)
     orchestrator = PitwallOrchestrator(
         model, calibrator, ctx, config, fusion_enabled=not args.no_fusion
@@ -81,7 +84,10 @@ def run_headless(args: argparse.Namespace) -> None:
 
     lat = np.array([u.compute_s for u in updates])
     drift = wall - session_end / speed if speed else float("nan")
-    print(f"event: {event} {season}  driver: {args.driver}  fusion: {not args.no_fusion}")
+    print(
+        f"event: {event} {season}  driver: {args.driver}  fusion: {not args.no_fusion}"
+        f"  anchor: {'ALL races (leaky)' if args.allow_future else 'prior races only'}"
+    )
     print(f"laps replayed: {event_laps['lap_number'].nunique()}  updates: {len(updates)}")
     print(
         f"latency mean {lat.mean():.3f}s  p95 {np.percentile(lat, 95):.3f}s  max {lat.max():.3f}s"
@@ -105,6 +111,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--headless", action="store_true", help="No UI; print acceptance stats.")
     parser.add_argument("--no-fusion", action="store_true", help="Disable the live modifier.")
     parser.add_argument("--csv", default=None, help="Write per-lap updates to this CSV.")
+    parser.add_argument(
+        "--allow-future",
+        action="store_true",
+        help="Train the anchor on ALL races incl. this and later ones (leaky; for comparison).",
+    )
     args = parser.parse_args(argv)
 
     if args.headless:
