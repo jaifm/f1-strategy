@@ -21,7 +21,10 @@ event) or with no ``--event`` for every event with clean laps.
 from __future__ import annotations
 
 import logging
+import os
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
+from multiprocessing import get_context
 from pathlib import Path
 
 import numpy as np
@@ -80,6 +83,19 @@ def build_event_sectors(
     return sectors
 
 
+def sectorize_job(
+    job: tuple[pd.DataFrame, int, str, IngestConfig, F1VisionConfig],
+) -> str:
+    """One race for a worker process; returns a status line, never raises."""
+    laps, season, event, ingest_config, vision_config = job
+    try:
+        sectors = build_event_sectors(laps, season, event, ingest_config, vision_config)
+    except Exception as exc:  # noqa: BLE001 — one bad event must not kill the batch
+        return f"{season} {event}: FAILED ({exc})"
+    n_laps = len(sectors[["driver", "lap_number"]].drop_duplicates())
+    return f"{season} {event}: {n_laps} laps sectorized"
+
+
 @dataclass
 class VisionDataset:
     """Tensor-ready samples; every array is aligned on the first axis."""
@@ -90,31 +106,39 @@ class VisionDataset:
     meta: pd.DataFrame  # [n rows] season/event/driver/lap_number/stint_number
 
 
-def build_samples(
-    laps: pd.DataFrame,
-    sectors: pd.DataFrame,
-    scaler: ChannelScaler,
-    vision_config: F1VisionConfig,
-) -> VisionDataset:
-    """Window labeled laps into [L, K, 5, 5] samples (see module docstring)."""
+def _race_samples(
+    job: tuple[pd.DataFrame, pd.DataFrame, ChannelScaler, F1VisionConfig],
+) -> tuple[list[np.ndarray], list[float], list[float], list[tuple[object, ...]]]:
+    """Samples for ONE race. Module-level so worker processes can pickle it.
+
+    Labels are per-race by construction (every label grouping includes
+    season + event), so labelling race-by-race equals labelling all at once.
+    """
+    laps, sectors, scaler, vision_config = job
     imaging = vision_config.imaging
     labeled = add_labels(laps, vision_config.labels)
     context = labeled.set_index(["season", "event", "driver", "lap_number"])
+    # Index sector rows by driver once — a per-stint boolean scan of the whole
+    # table was the real cost of assembly (O(stints x rows)).
+    sectors_by_driver = {str(d): g for d, g in sectors.groupby("driver")}
 
     samples, pace, cliff, meta_rows = [], [], [], []
     for (season, event, driver, stint), stint_laps in labeled.groupby(
         ["season", "event", "driver", "stint_number"], sort=False
     ):
-        event_sectors = sectors[
-            (sectors["season"] == season)
-            & (sectors["event"] == event)
-            & (sectors["driver"] == driver)
-        ]
+        event_sectors = sectors_by_driver.get(str(driver))
+        if event_sectors is None:
+            continue
         by_lap = {}
         for lap_n, table in event_sectors.groupby("lap_number"):
             if len(table) != imaging.k_sectors:
                 continue
             row = context.loc[(season, event, driver, lap_n)]
+            # Laps missing a context value (FastF1 omits TyreLife on some laps:
+            # 2022 Austria/Monaco, 2025 Miami...) get no frame rather than an
+            # imputed one; windows that include them are dropped below.
+            if row[CONTEXT_CHANNELS].isna().any():
+                continue
             table = table.assign(
                 tyre_age=row["tyre_age"],
                 fuel_proxy=row["fuel_proxy"],
@@ -141,12 +165,46 @@ def build_samples(
             meta_rows.append(
                 (season, event, driver, anchor, stint, 0.0 if pd.isna(current) else current)
             )
+    return samples, pace, cliff, meta_rows
 
+
+def build_samples(
+    laps: pd.DataFrame,
+    sectors: pd.DataFrame,
+    scaler: ChannelScaler,
+    vision_config: F1VisionConfig,
+    workers: int | None = None,
+) -> VisionDataset:
+    """Window labeled laps into [L, K, 5, 5] samples (see module docstring).
+
+    Races are independent, so they are processed in parallel worker processes
+    (``workers`` defaults to all cores; 1 = serial). Workers are *spawned* and
+    this module imports neither torch nor lightgbm, so the dual-libomp
+    deadlock cannot occur in them. Output order is the input race order.
+    """
+    keys = ["season", "event"]
+    sector_groups = dict(list(sectors.groupby(keys)))
+    jobs = [
+        (race_laps, sector_groups[k], scaler, vision_config)
+        for k, race_laps in laps.groupby(keys, sort=False)
+        if k in sector_groups
+    ]
+    n_workers = min(workers or os.cpu_count() or 1, len(jobs))
+    if n_workers <= 1:
+        results = [_race_samples(job) for job in jobs]
+    else:
+        with ProcessPoolExecutor(n_workers, mp_context=get_context("spawn")) as pool:
+            results = list(pool.map(_race_samples, jobs))
+
+    samples = [x for r in results for x in r[0]]
     if not samples:
         raise RuntimeError("No samples produced — check sector tables and labels")
+    frames = np.stack(samples).astype(np.float32)
+    if not np.isfinite(frames).all():
+        raise ValueError("Non-finite values in assembled frames — check context inputs")
     return VisionDataset(
-        frames=np.stack(samples).astype(np.float32),
-        pace_delta=np.array(pace, dtype=np.float32),
-        cliff=np.array(cliff, dtype=np.float32),
-        meta=pd.DataFrame(meta_rows, columns=META_COLUMNS),
+        frames=frames,
+        pace_delta=np.array([x for r in results for x in r[1]], dtype=np.float32),
+        cliff=np.array([x for r in results for x in r[2]], dtype=np.float32),
+        meta=pd.DataFrame([x for r in results for x in r[3]], columns=META_COLUMNS),
     )

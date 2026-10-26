@@ -210,6 +210,8 @@ def train_torch_model(
             if stale >= cfg.patience:
                 logger.info("early stop at epoch %d (best val %.4f)", epoch, best_loss)
                 break
+    if best_state is None:  # every epoch's val loss was NaN/inf
+        raise RuntimeError("Validation loss never finite — check inputs for NaN")
     model.load_state_dict(best_state)
     return model
 

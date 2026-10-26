@@ -4,18 +4,23 @@ from __future__ import annotations
 
 import argparse
 import logging
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import get_context
 
 import pandas as pd
 
 from f1_core.config import load_config as load_core_config
 from f1_vision.config import load_config
-from f1_vision.train.dataset import build_event_sectors
+from f1_vision.train.dataset import sectorize_job
 
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="configs/f1_core.yaml")
     parser.add_argument("--event", default=None, help="One event; default: all with clean laps.")
+    parser.add_argument(
+        "--workers", type=int, default=4, help="Parallel races for the sector build."
+    )
     parser.add_argument(
         "--study", action="store_true", help="Run the §2.5 baseline study on cached sectors."
     )
@@ -44,14 +49,15 @@ def main(argv: list[str] | None = None) -> None:
     )
     if args.event:
         pairs = pairs[pairs["event"] == args.event]
-    for season, event in pairs.itertuples(index=False):
-        try:
-            sectors = build_event_sectors(laps, int(season), event, core.ingest, vision)
-        except Exception as exc:  # noqa: BLE001 — one bad event must not kill the batch
-            print(f"{season} {event}: FAILED ({exc})")
-            continue
-        n_laps = len(sectors[["driver", "lap_number"]].drop_duplicates())
-        print(f"{season} {event}: {n_laps} laps sectorized")
+    jobs = [
+        (laps[(laps["season"] == s) & (laps["event"] == e)], int(s), str(e), core.ingest, vision)
+        for s, e in pairs.itertuples(index=False)
+    ]
+    # Races are independent. Each worker holds a full race session in memory,
+    # so the default is capped well below the core count (RAM, not CPU, binds).
+    with ProcessPoolExecutor(max(1, args.workers), mp_context=get_context("spawn")) as pool:
+        for line in pool.map(sectorize_job, jobs):
+            print(line, flush=True)
 
 
 if __name__ == "__main__":

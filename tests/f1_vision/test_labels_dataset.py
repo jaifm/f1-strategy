@@ -123,3 +123,15 @@ class TestDatasetWindows:
         assert a_meta["lap_number"].min() >= 6
         # last lap (12) has NaN pace label -> excluded
         assert 12 not in set(a_meta["lap_number"])
+
+
+def test_laps_missing_context_are_skipped_not_imputed() -> None:
+    """Regression: a NaN tyre_age must not reach the frames (it NaN'd training)."""
+    vision = F1VisionConfig()
+    laps, sectors, scaler, _ = TestDatasetWindows().build()
+    laps.loc[(laps.driver == "A") & (laps.lap_number == 8), "tyre_age"] = np.nan
+    ds = build_samples(laps, sectors, scaler, vision)
+    assert np.isfinite(ds.frames).all()
+    # every window containing lap 8 (anchors 8..12) is dropped for driver A
+    a_anchors = set(ds.meta.loc[ds.meta.driver == "A", "lap_number"])
+    assert not a_anchors & {8, 9, 10, 11, 12}
