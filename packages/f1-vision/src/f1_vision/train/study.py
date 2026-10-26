@@ -55,6 +55,23 @@ def split_events(core: F1CoreConfig, vision: F1VisionConfig) -> dict[str, list[R
         .itertuples(index=False)
         if sectors_path(core.ingest.output_dir, int(s), str(e)).exists()
     )
+    if cfg.split_mode == "temporal":
+        order_df = (
+            laps[["season", "round", "event"]]
+            .drop_duplicates(["season", "event"])
+            .sort_values(["season", "round"])
+        )
+        chrono = [
+            (int(r.season), str(r.event))
+            for r in order_df.itertuples(index=False)
+            if (int(r.season), str(r.event)) in set(pairs)
+        ]
+        before = [p for p in chrono if p[0] < cfg.test_season]
+        return {
+            "test": [p for p in chrono if p[0] == cfg.test_season],
+            "val": before[-cfg.val_races :],
+            "train": before[: -cfg.val_races],
+        }
     order = np.random.default_rng(cfg.split_seed).permutation(len(pairs))
     n_test = max(1, round(len(pairs) * cfg.test_fraction))
     n_val = max(1, round(len(pairs) * cfg.val_fraction))
@@ -85,9 +102,20 @@ def assemble_datasets(
     train_sectors = load_sectors(splits["train"])
     fit_frame = train_sectors.merge(
         laps[
-            ["event", "driver", "lap_number", "tyre_age", "fuel_proxy", "track_temp", "stint_lap"]
+            [
+                "season",
+                "event",
+                "driver",
+                "lap_number",
+                "tyre_age",
+                "fuel_proxy",
+                "track_temp",
+                "stint_lap",
+            ]
         ],
-        on=["event", "driver", "lap_number"],
+        # season is part of the key: event names repeat every year, and
+        # omitting it cross-joins seasons (incl. the test season) into the fit.
+        on=["season", "event", "driver", "lap_number"],
     )
     scaler = ChannelScaler.fit(fit_frame)
 

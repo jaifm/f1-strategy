@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field
@@ -43,6 +44,16 @@ class LabelConfig(BaseModel):
 class TrainConfig(BaseModel):
     """Training/study settings (spec §2.5)."""
 
+    split_mode: Literal["temporal", "random"] = Field(
+        default="temporal",
+        description=(
+            "temporal: train on races before test_season, validate on the last "
+            "val_races of them, test on all of test_season (no future data in "
+            "training). random: shuffled race-level split (the original 2024 study)."
+        ),
+    )
+    test_season: int = Field(default=2025, description="temporal: season held out for test.")
+    val_races: int = Field(default=6, description="temporal: most recent pre-test races for val.")
     val_fraction: float = Field(default=0.15, description="Events held out for early stopping.")
     test_fraction: float = Field(default=0.2, description="Events held out for the report.")
     split_seed: int = Field(default=11)

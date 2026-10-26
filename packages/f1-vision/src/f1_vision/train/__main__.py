@@ -30,7 +30,8 @@ def main(argv: list[str] | None = None) -> None:
 
         from f1_vision.train.study import run_study
 
-        report = run_study(core, vision, Path("artifacts/phase2"))
+        out = "phase2_walkforward" if vision.train.split_mode == "temporal" else "phase2"
+        report = run_study(core, vision, Path("artifacts") / out)
         print(report[report.event == "ALL"].to_string(index=False))
         return
 
