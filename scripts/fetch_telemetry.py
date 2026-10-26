@@ -28,7 +28,9 @@ def main() -> None:
     fastf1.Cache.enable_cache("data/fastf1_cache")
     laps = pd.read_parquet("data/processed/laps.parquet")
     wanted = set(
-        laps[laps["is_clean"]][["season", "event"]].drop_duplicates().itertuples(index=False, name=None)
+        laps[laps["is_clean"]][["season", "event"]]
+        .drop_duplicates()
+        .itertuples(index=False, name=None)
     )
 
     todo = []
